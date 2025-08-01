@@ -402,7 +402,8 @@ Next, we set the update interval for our chart. In the example, we chose 1 minut
 
 <table>
   <tr>
-    <td><img src="images/11.png" width="1000"></td>
+    <td><img src="images/11.png" width="500"></td>
+     <td><img src="images/12.png" width="500"></td>
   </tr>
 </table>
 
@@ -411,7 +412,7 @@ As can be seen, while the total number of sales in 2025 was 5.46 thousand, the t
 <table>
   <tr>
     <td><img src="images/10.png" width="500"></td>
-    <td><img src="images/12.png" width="500"></td>
+    <td><img src="images/13.png" width="500"></td>
   </tr>
 </table>
 

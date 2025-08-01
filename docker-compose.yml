@@ -1,0 +1,31 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: salespulse-backend
+    env_file: .env.docker               # ORACLE_DSN, ORACLE_USER, ORACLE_PASSWORD buradan gelir
+    environment:
+      TZ: ${TZ:-Europe/Istanbul}        # opsiyonel: sistem saat dilimi
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .                         # <-- PROJE KÖKÜ (deploy/nginx.conf erişilsin diye)
+      dockerfile: client/Dockerfile
+      args:
+        VITE_API_URL: /api               # Frontend build-time env (Vite), Nginx proxy ile eşleşir
+    container_name: salespulse-web
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8080:80"
+    restart: unless-stopped

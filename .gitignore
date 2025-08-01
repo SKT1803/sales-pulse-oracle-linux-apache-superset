@@ -1,0 +1,21 @@
+# Node / Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Python / Backend
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Env files
+.env
+.env.*
+!.env.docker   # bu dosyayı *bilerek* takip etmek isteyebilirsin; içinde hassas bilgi varsa takip etmeyin
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

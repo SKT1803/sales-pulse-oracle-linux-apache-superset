@@ -225,7 +225,6 @@ Adding new partitions.
 ALTER TABLE SH.SALES
 ADD PARTITION SALES_FUTURE VALUES LESS THAN (MAXVALUE)
 TABLESPACE USERS;
-
 ```
 This accepts all future dates 2026, 2030, 2050...
 

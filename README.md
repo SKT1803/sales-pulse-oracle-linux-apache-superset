@@ -10,6 +10,9 @@
     <tr>
     <td><img src="images/3.png" width="1000"></td>
   </tr>
+     <tr>
+    <td><img src="images/10.png" width="1000"></td>
+  </tr>
 </table>
 
 A lightweight sales & order management system with:

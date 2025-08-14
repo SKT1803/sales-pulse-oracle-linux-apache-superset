@@ -332,6 +332,20 @@ docker-compose up --build
 
 - Frontend → http://localhost:5173 (or mapped port)
 
+
+After the build:  
+
+If you changed code and need a rebuild for specific services:
+```powershell
+docker compose build client
+docker compose build server
+docker compose up -d
+```
+> docker compose build client: changes on the client side.  
+> docker compose build server: changes on the server side.  
+> Tip: docker compose up --build -d also works to rebuild what’s needed automatically.  
+
+
 ### 4️ Stop containers
 
 ```bash

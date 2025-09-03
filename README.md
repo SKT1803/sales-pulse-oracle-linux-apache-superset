@@ -32,7 +32,6 @@ A lightweight sales & order management system with:
 
 ### Product Management
 - Fetch product list from SH.PRODUCTS table
-- 
 - Display price, description, and subcategory
 
 ### Order Creation

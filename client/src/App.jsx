@@ -1,72 +1,90 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import axios from "axios";
 import "./App.css";
 
-const API_URL = import.meta.env.VITE_API_URL;
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL ?? "http://localhost:8000",
+});
+
+const fmtMoney = (v) => {
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(2) : "0.00";
+};
 
 function App() {
-  const [activeTab, setActiveTab] = useState("sales");
-  const [sales, setSales] = useState([]);
+  const [activeTab, setActiveTab] = useState("orders");
+  const [orders, setOrders] = useState([]);
   const [products, setProducts] = useState([]);
 
-  const [order, setOrder] = useState({
-    product_id: "",
-    quantity: "",
-  });
-
+  const [order, setOrder] = useState({ product_id: "", quantity: "" });
   const [notification, setNotification] = useState({ message: "", type: "" });
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Satışları çek
-  const fetchSales = async () => {
+  const [expandedOrderId, setExpandedOrderId] = useState(null);
+  const [orderItems, setOrderItems] = useState([]);
+  const [itemsLoading, setItemsLoading] = useState(false);
+
+  const fetchOrders = async () => {
     try {
-      const response = await axios.get(`${API_URL}/sales`);
-      setSales(response.data);
-    } catch (error) {
-      console.error("Satışlar alınamadı:", error);
+      const { data } = await api.get("/orders"); // dil gerekiyorsa: /orders?lang=TR
+      setOrders(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Siparişler alınamadı:", err);
     }
   };
 
-  // Ürünleri çek
   const fetchProducts = async () => {
     try {
-      const response = await axios.get(`${API_URL}/products`);
-      setProducts(response.data);
-    } catch (error) {
-      console.error("Ürünler alınamadı:", error);
+      const { data } = await api.get("/products"); // /products?lang=TR
+      setProducts(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Ürünler alınamadı:", err);
     }
   };
 
-  // Satışlar sekmesi (auto-refresh dahil)
+  const fetchOrderItems = async (orderId) => {
+    try {
+      setItemsLoading(true);
+      const { data } = await api.get("/order-items", {
+        params: { order_id: orderId },
+      });
+      setOrderItems(Array.isArray(data) ? data : []);
+    } catch (err) {
+      console.error("Sipariş satırları alınamadı:", err);
+      setOrderItems([]);
+    } finally {
+      setItemsLoading(false);
+    }
+  };
+
+  const toggleDetails = async (orderId) => {
+    if (expandedOrderId === orderId) {
+      setExpandedOrderId(null);
+      setOrderItems([]);
+      return;
+    }
+    setExpandedOrderId(orderId);
+    await fetchOrderItems(orderId);
+  };
+
   useEffect(() => {
-    if (activeTab === "sales") {
-      fetchSales();
+    if (activeTab === "orders") {
+      fetchOrders();
       let interval = null;
-      if (autoRefresh) {
-        interval = setInterval(fetchSales, 5000);
-      }
-      return () => {
-        if (interval) clearInterval(interval);
-      };
+      if (autoRefresh) interval = setInterval(fetchOrders, 5000);
+      return () => interval && clearInterval(interval);
     }
   }, [activeTab, autoRefresh]);
 
-  // Ürünler sekmesi
   useEffect(() => {
-    if (activeTab === "newOrder") {
-      fetchProducts();
-    }
+    if (activeTab === "newOrder") fetchProducts();
   }, [activeTab]);
 
-  // Bildirim
   const showNotification = (message, type = "success") => {
     setNotification({ message, type });
     setTimeout(() => setNotification({ message: "", type: "" }), 3000);
   };
 
-  // Sipariş gönder
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -74,20 +92,20 @@ function App() {
         product_id: Number(order.product_id),
         quantity: Number(order.quantity),
       };
-
-      await axios.post(`${API_URL}/add-order`, payload);
-
+      await api.post("/add-order", payload);
       setOrder({ product_id: "", quantity: "" });
-      showNotification("Sipariş başarıyla eklendi (OE.ORDERS + SH.SALES)!");
-
-      // setActiveTab("sales");
+      showNotification(
+        "Sipariş başarıyla eklendi (OE.ORDERS + OE.ORDER_ITEMS)!"
+      );
+      // İstersen listeyi hemen tazele
+      // setActiveTab("orders");
+      // fetchOrders();
     } catch (error) {
       console.error(error);
       showNotification("Sipariş eklenirken hata oluştu.", "error");
     }
   };
 
-  // Sipariş özeti için yardımcı fonksiyonlar
   const getProductName = (productId) => {
     const product = products.find((p) => p.id === productId);
     return product ? product.name : "Bilinmeyen Ürün";
@@ -95,12 +113,13 @@ function App() {
 
   const getProductPrice = (productId) => {
     const product = products.find((p) => p.id === productId);
-    return product ? product.price : 0;
+    return Number(product?.price ?? 0);
   };
 
   const calculateTotal = (productId, quantity) => {
     const price = getProductPrice(productId);
-    return (price * quantity).toFixed(2);
+    const nQty = Number(quantity);
+    return fmtMoney(price * (Number.isFinite(nQty) ? nQty : 0));
   };
 
   return (
@@ -112,7 +131,7 @@ function App() {
       )}
 
       <header className="header">
-        <h1>Satış & Sipariş Yönetimi</h1>
+        <h1>Sipariş & Sipariş Yönetimi</h1>
       </header>
 
       <div className="tabs">
@@ -124,20 +143,18 @@ function App() {
         </button>
 
         <button
-          className={`tab ${activeTab === "sales" ? "active" : ""}`}
-          onClick={() => setActiveTab("sales")}
+          className={`tab ${activeTab === "orders" ? "active" : ""}`}
+          onClick={() => setActiveTab("orders")}
         >
-          Satışlar
+          Siparişler
         </button>
       </div>
 
       <div className="tab-content">
-        {activeTab === "sales" && (
+        {activeTab === "orders" && (
           <div className="card">
             <div className="card-header">
-              <h2>Satış Listesi (SH.SALES)</h2>
-
-              {/* Renkli Toggle Butonu */}
+              <h2>Sipariş Listesi (OE.ORDERS)</h2>
               <button
                 className={`btn-toggle ${autoRefresh ? "on" : "off"}`}
                 onClick={() => setAutoRefresh(!autoRefresh)}
@@ -148,28 +165,94 @@ function App() {
               </button>
             </div>
             <div className="card-content">
-              {sales.length === 0 ? (
-                <p className="empty-state">Henüz satış kaydı bulunamadı</p>
+              {!orders?.length ? (
+                <p className="empty-state">Henüz sipariş kaydı bulunamadı</p>
               ) : (
                 <table className="table">
                   <thead>
                     <tr>
-                      <th>Ürün ID</th>
-                      <th>Müşteri ID</th>
+                      <th>Sipariş ID</th>
                       <th>Tarih</th>
-                      <th>Adet</th>
-                      <th>Tutar</th>
+                      <th>Müşteri ID</th>
+                      <th>Durum</th>
+                      <th>Toplam</th>
+                      <th>Ürünler (Özet)</th>
+                      <th>Satır Sayısı</th>
+                      <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {sales.map((s, i) => (
-                      <tr key={i}>
-                        <td>{s.prod_id}</td>
-                        <td>{s.cust_id}</td>
-                        <td>{s.time_id}</td>
-                        <td>{s.quantity}</td>
-                        <td>{s.amount.toFixed(2)} $</td>
-                      </tr>
+                    {orders.map((o, i) => (
+                      <>
+                        <tr key={o?.order_id ?? i}>
+                          <td>{o?.order_id ?? "-"}</td>
+                          <td>{o?.order_date ?? "-"}</td>
+                          <td>{o?.customer_id ?? "-"}</td>
+                          <td>{o?.status ?? "-"}</td>
+                          <td>{fmtMoney(o?.total)} $</td>
+                          <td
+                            style={{
+                              maxWidth: 320,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                            }}
+                          >
+                            {o?.items_preview || "—"}
+                          </td>
+                          <td>{o?.items_count ?? 0}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="btn btn-secondary"
+                              onClick={() => toggleDetails(o.order_id)}
+                            >
+                              {expandedOrderId === o.order_id
+                                ? "Gizle"
+                                : "Detay"}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {expandedOrderId === o.order_id && (
+                          <tr className="details-row">
+                            <td colSpan={8}>
+                              {itemsLoading ? (
+                                <div>Satırlar yükleniyor...</div>
+                              ) : !orderItems.length ? (
+                                <div>Bu siparişte satır yok.</div>
+                              ) : (
+                                <div className="items-panel">
+                                  <table className="table subtable">
+                                    <thead>
+                                      <tr>
+                                        <th>Satır No</th>
+                                        <th>Ürün</th>
+                                        <th>Birim Fiyat</th>
+                                        <th>Adet</th>
+                                        <th>Satır Tutarı</th>{" "}
+                                      </tr>
+                                    </thead>
+                                    <tbody>
+                                      {orderItems.map((it) => (
+                                        <tr key={it.line_item_id}>
+                                          <td>{it.line_item_id}</td>
+                                          <td>
+                                            {it.name} (#{it.product_id})
+                                          </td>
+                                          <td>{fmtMoney(it.unit_price)} $</td>
+                                          <td>{it.quantity}</td>
+                                          <td>{fmtMoney(it.line_total)} $</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        )}
+                      </>
                     ))}
                   </tbody>
                 </table>
@@ -184,7 +267,7 @@ function App() {
               <h2>Yeni Sipariş Oluştur (OE.ORDERS)</h2>
             </div>
 
-            {products.length === 0 ? (
+            {!products?.length ? (
               <p className="empty-state">Ürün listesi bulunamadı.</p>
             ) : (
               <form onSubmit={handleOrderSubmit} className="form">
@@ -200,7 +283,8 @@ function App() {
                     <option value="">Ürün seçin</option>
                     {products.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.name} ({p.subcategory}) - {p.price.toFixed(2)} $
+                        {p.name} {p.subcategory ? `(${p.subcategory})` : ""} -{" "}
+                        {fmtMoney(p.price)} $
                       </option>
                     ))}
                   </select>
@@ -219,7 +303,6 @@ function App() {
                   />
                 </div>
 
-                {/* Sipariş Özeti */}
                 {order.product_id && order.quantity && (
                   <div className="order-summary">
                     <div className="summary-title">Sipariş Özeti</div>
@@ -227,7 +310,7 @@ function App() {
                       <p>Ürün: {getProductName(Number(order.product_id))}</p>
                       <p>
                         Birim Fiyat:{" "}
-                        {getProductPrice(Number(order.product_id)).toFixed(2)} $
+                        {fmtMoney(getProductPrice(Number(order.product_id)))} $
                       </p>
                       <p className="total">
                         Toplam:{" "}

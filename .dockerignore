@@ -1,0 +1,34 @@
+# VCS & genel
+.git
+.gitignore
+.github/
+.editorconfig
+.DS_Store
+*.log
+
+# Backend (client imajı için gereksiz)
+backend/venv/
+backend/.venv/
+backend/__pycache__/
+backend/*.py[cod]
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.coverage
+backend/coverage.xml
+backend/htmlcov/
+
+# Frontend büyük klasörler
+client/node_modules/
+client/dist/
+client/.vite/
+client/.next/
+
+# Env dosyaları (Docker build ta arg ile veriyoruz)
+client/.env*
+.env
+.env.*
+.env.docker
+
+# Önemli: Nginx konfigi lazım, O YÜZDEN deploy/ Dahil KALSIN
+# (deploy/nginx.conf u KOPYA ediyoruz)
+# deploy/  <-- BUNU IGNORE ETME!

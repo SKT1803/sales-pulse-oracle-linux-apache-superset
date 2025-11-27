@@ -13,7 +13,8 @@ venv/
 # Env files
 .env
 .env.*
-!.env.docker   # bu dosyayı *bilerek* takip etmek isteyebilirsin; içinde hassas bilgi varsa takip etmeyin
+!.env.docker  
+#!/.env.docker.example
 
 # OS / IDE
 .DS_Store

@@ -1,5 +1,4 @@
 #root {
-  /* max-width: 1280px; */
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
@@ -76,17 +75,6 @@ body {
   border: 1px solid #fecaca;
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
 .tabs {
   display: flex;
   background-color: #f1f5f9;
@@ -153,12 +141,6 @@ body {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 2rem;
-}
-
-@media (max-width: 768px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .form {
@@ -396,7 +378,6 @@ body {
   margin-bottom: 0.5rem;
 }
 
-/* Empty State */
 .empty-state {
   text-align: center;
   color: #64748b;
@@ -414,42 +395,65 @@ body {
 }
 
 .btn-toggle.on {
-  background: #2ecc71; /* yeşil */
+  background: #2ecc71;
   color: white;
 }
 
 .btn-toggle.off {
-  background: #e74c3c; /* kırmızı */
+  background: #e74c3c;
   color: white;
 }
 
-/* .btn-toggle:hover {
-  transform: scale(1.05);
-} */
-
-/* .order-summary {
-  background: #f9f9f9;
-  border: 1px solid #ddd;
-  padding: 12px;
-  border-radius: 8px;
-  margin-bottom: 10px;
+.details-row > td {
+  padding: 0;
+  background: transparent;
+  border-bottom: none;
 }
 
-.summary-title {
-  font-weight: bold;
-  margin-bottom: 6px;
+.items-panel {
+  position: relative;
+  margin: 10px 8px 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
+  overflow: hidden;
+  animation: detailsIn 0.18s ease-out;
 }
 
-.summary-content p {
-  margin: 2px 0;
+.items-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0; /* top:0; bottom:0; left:0 */
+  width: 4px;
+  background: #3b82f6;
 }
 
-.summary-content .total {
-  color: #e63946;
-  font-weight: bold;
-} */
+.table.subtable {
+  margin: 0;
+}
+.table.subtable th,
+.table.subtable td {
+  border-bottom: 1px solid #eef2f7;
+}
+.table.subtable th {
+  background: #f1f5f9;
+  color: #374151;
+}
+.table.subtable tr:last-child td {
+  border-bottom: 0;
+}
 
-/* Responsive ayarlandı, daha da ayaralama yapılabilir */
+/* Sayısal kolonu sağa hizala (Birim Fiyat, Adet, Satır Tutarı) */
+.table.subtable th:nth-child(3),
+.table.subtable th:nth-child(4),
+.table.subtable th:nth-child(5),
+.table.subtable td:nth-child(3),
+.table.subtable td:nth-child(4),
+.table.subtable td:nth-child(5) {
+  text-align: right;
+}
+
 @media (max-width: 768px) {
   .app {
     padding: 1rem;
@@ -495,5 +499,43 @@ body {
   .card-content,
   .form {
     padding: 1rem;
+  }
+}
+
+@keyframes detailsIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .items-panel {
+    margin: 8px 0 12px;
+  }
+  .table.subtable th,
+  .table.subtable td {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
   }
 }

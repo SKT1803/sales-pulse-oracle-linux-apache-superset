@@ -1,10 +1,39 @@
+# VCS & CI
+.git
+.gitignore
+.github/
+.editorconfig
+
+# Python cache/build artıkları
 __pycache__/
-*.pyc
+*.py[cod]
 *.pyo
 *.pyd
-*.log
-.venv/
-venv/
-.env
+*.so
+*.egg-info/
+.eggs/
 dist/
 build/
+.cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Sanal ortamlar
+venv/
+.venv/
+
+# Env & gizli dosyalar (compose zaten env_file ile geçiriyor)
+.env
+.env.*
+.env.docker
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/
+
+# Loglar
+*.log

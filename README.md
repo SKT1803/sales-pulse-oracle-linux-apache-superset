@@ -15,13 +15,13 @@
   </tr>
 </table>
 
-A lightweight sales & order management system with:
+A lightweight sales & order management system built on top of the Oracle OE sample schema, with:
 
 - FastAPI backend (Python)
 
 - React frontend (Vite + Axios)
 
-- Oracle Database for storing products, orders, and sales
+- Oracle Database (OE.ORDERS + OE.ORDER_ITEMS + OE.PRODUCT_INFORMATION)
 
 - Dockerized for easy deployment on any machine
 
@@ -30,35 +30,50 @@ A lightweight sales & order management system with:
 
 ## Features
 
-### Product Management
-- Fetch product list from SH.PRODUCTS table
-- Display price, description, and subcategory
+### Product Management (`OE.PRODUCT_INFORMATION` + `PRODUCT_DESCRIPTIONS`)
 
-### Order Creation
+- Fetch product list from `OE.PRODUCT_INFORMATION`
+- Optional localized product names via `OE.PRODUCT_DESCRIPTIONS`
+  - Language is controlled by `PRODUCT_LANG` env var or `?lang=` query parameter
+- Display product name and list price in the UI
 
-- Create a new order in OE.ORDERS
+### Order Creation (`OE.ORDERS` + `OE.ORDER_ITEMS`)
 
-- Automatically insert sales record into SH.SALES
+- Create a new order in `OE.ORDERS`
+- Automatically insert the corresponding line item into `OE.ORDER_ITEMS`
+- Each order line contains:
+  - `PRODUCT_ID`, `UNIT_PRICE`, `QUANTITY`, `LINE_ITEM_ID`
+- Order summary is shown before submission on the frontend
 
-- Order summary shown before submission
+### Orders Dashboard
 
-### Sales Dashboard
-
-- View last 50 sales (newest on top)
-
-- Auto-refresh toggle (on/off)
+- View the **latest 50 orders** (newest on top)
+- Each order row shows:
+  - Order ID, order date, customer id, status, total amount
+  - A short **items preview** like: `Headphones x1; Cable x2 (+1 satır)`
+  - **Items count** (number of `ORDER_ITEMS` lines)
+- Click **Detay / Gizle** to expand an order and see a nested table with full line items:
+  - Product name, unit price, quantity, line total
+- Auto-refresh toggle (on/off) for the orders list (polling every 5s)
 
 ### Optimized Backend
 
-- Oracle connection pooling for better performance
-
-- Partition-safe inserts using latest TIME_ID from SH.TIMES
+- Oracle **connection pooling** with `oracledb`:
+  - Pool created at app startup
+  - Shared across all requests
+- **Efficient queries**:
+  - `/orders` endpoint fetches last 50 orders
+  - Then loads all their items in a **single query** using a dynamic `IN` clause
+- **Language-aware product names**:
+  - `PRODUCT_LANG` env var for default language (e.g. `TR`, `US`)
+  - `lang` query parameter overrides per-request if needed
 
 ### Easy Deployment with Docker Compose
 
 - Frontend & backend run in containers
+- Configurable via `.env.docker`
+- Only dependency: an accessible Oracle database with the OE schema
 
-- Configurable via .env.docker
 
 ---
 
@@ -68,9 +83,9 @@ A lightweight sales & order management system with:
 
 - Python 3 + FastAPI
 
-- oracledb (thin mode)
+- `oracledb` (thin mode)
 
-- Uvicorn server
+- Uvicorn (ASGI server)
 
 - Connection pooling to Oracle
 
@@ -80,17 +95,22 @@ A lightweight sales & order management system with:
 
 - Axios for API calls
 
-- Responsive CSS (custom)
+- Custom responsive CSS
 
 ### Database:
 
-- Oracle 19c+ (Sample Schemas: SH and OE)
+- Oracle 19c+
+- OE sample schema:
+  - `OE.PRODUCT_INFORMATION`
+  - `OE.PRODUCT_DESCRIPTIONS` (for translations, optional)
+  - `OE.ORDERS`
+  - `OE.ORDER_ITEMS`
 
 ### Deployment:
 
 - Docker & Docker Compose
 
-- Environment-based configuration (.env.docker)
+- Environment-based configuration via `.env.docker`
 
 ---
 ## Project Structure
@@ -118,24 +138,31 @@ project-root/
 
 ---
 
-## ⚠️ Important Notes on Oracle Data Requirements
+## 🔁 Optional: Integrating OE Orders into SH.SALES (Data Warehouse)
 
-To ensure the application works properly, make sure of the following:
+The Sales Pulse app itself **only writes to OE.ORDERS and OE.ORDER_ITEMS**.
 
-- The SH.TIMES table must include dates for the year 2025 and beyond. Otherwise, inserting sales data tied to the current date will fail.
+However, in many Oracle demo setups you may have a separate ETL/PL/SQL job or trigger that **copies OE orders into SH.SALES** for reporting (e.g., SH schema dashboards).
 
-- The SH.SALES table is partitioned by TIME_ID. You must add new partitions (e.g., for 2023–2025) if they don’t already exist, or you'll encounter the following error during inserts:
+If you (or someone else) implement such a process, you must ensure:
 
-```bash
-ORA-14400: inserted partition key does not map to any partition
-```
-If you're unsure, ask your DBA to ensure the necessary partitions are created
-or insert sample data with TIME_ID values that fall within existing partitions.
+1. **SH.TIMES covers the dates you insert**
+   - SH.SALES is partitioned by `TIME_ID`.
+   - Any `TIME_ID` you use in SH.SALES must exist in SH.TIMES.
+   - Otherwise, inserts may fail or partitions may not match.
 
+2. **SH.SALES has partitions for those dates**
+   - If you insert data for years not covered by existing partitions, you will hit:
 
-The script adds the year 2025 to the TIMES Table. You can edit and use it for other years.
+   ```bash
+   ORA-14400: inserted partition key does not map to any partition
+    ```
 
-```bash
+### Adding dates to SH.TIMES (example for year 2025)
+
+You can generate one row per day for 2025 with a PL/SQL block like this (adapt the year as needed):
+
+```sql
 BEGIN
   FOR v_date IN 0 .. 364 LOOP
     DECLARE
@@ -196,6 +223,7 @@ BEGIN
   COMMIT;
 END;
 ```
+
 How does it work?
 
 - Inserts one row for each day of 2025 (01-01-2025 → 31-12-2025).
@@ -217,10 +245,9 @@ How does it work?
   </tr>
 </table>
 
-Adding new partitions.
-
+Adding new partitions. (Adding a “catch-all” future partition to SH.SALES)
+- If you do not want to manage yearly partitions manually, you can add a MAXVALUE partition so that all future dates are accepted:
 - Opening partitions means updating the SH.SALES table to accept new dates. This is because the SH.SALES table is a partitioned table and only accepts data for specific dates via the TIME_ID column.
-
 - If a maxvalue partition (infinite date) is added to the table, we don't have to bother with it again:
 
 ```bash
@@ -228,7 +255,7 @@ ALTER TABLE SH.SALES
 ADD PARTITION SALES_FUTURE VALUES LESS THAN (MAXVALUE)
 TABLESPACE USERS;
 ```
-This accepts all future dates 2026, 2030, 2050...
+This allows TIME_ID values for 2026, 2030, 2050, etc. without further partition changes.
 
 <table>
   <tr>
@@ -405,7 +432,7 @@ npm run dev
 
 ## Superset Previews
 
-In the superset, we select our Oracle database, SH schema, and SALES table and create a chart. Here, we examine the number of sales by year.
+In the superset, we select our Oracle database, OE schema, and ORDERS table and create a chart. Here, we examine the number of sales by year.
 
 <table>
   <tr>

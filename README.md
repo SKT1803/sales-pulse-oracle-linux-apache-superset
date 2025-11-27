@@ -386,6 +386,41 @@ docker-compose down
 ```
 
 ---
+## Manual Local Development (Without Docker)
+
+If not using Docker:
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+
+# Linux/macOS
+source venv/bin/activate
+
+# Windows
+# venv\Scripts\activate
+
+pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+```
+
+### Frontend
+
+```bash
+cd client
+npm install
+npm run dev
+```
+- The frontend uses `VITE_API_URL` to talk to the backend
+Example:
+```bash
+VITE_API_URL=http://localhost:8000
+```
+
+
+---
 
 ## How It Works
 

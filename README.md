@@ -265,26 +265,38 @@ This allows TIME_ID values for 2026, 2030, 2050, etc. without further partition 
 
 
 --- 
+## Environment & Oracle Configuration
+
+The backend reads the following environment variables:
+
+```bash
+ORACLE_DSN=192.168.1.182:1521/testdb
+ORACLE_USER=superset
+ORACLE_PASSWORD=superset123
+
+# Optional: default language for PRODUCT_DESCRIPTIONS.LANGUAGE_ID
+PRODUCT_LANG=TR
+```
+- `PRODUCT_LANG` controls which language row is used in `OE.PRODUCT_DESCRIPTIONS`.
+- You can also override it per request using `?lang=TR` or `?lang=US` on the endpoints  
+  (e.g. `/products?lang=TR`, `/orders?lang=US`).
+
+
+---
 
 ## Prerequisites – How to Get the App Working
 
 For the application to work end-to-end, follow these required setup steps in order:
 
-### 1️ Oracle Database Setup
+### 1 Oracle Database Setup
 
-- You need an Oracle DB instance running with the SH and OE sample schemas.
-
-- If not available, install Oracle 19c+ and load the sample schemas.
-
+- You need an Oracle DB instance running with the **OE sample schema**.
+- If not available, install Oracle 19c+ and load the sample schemas (including **OE**).
 - Ensure the following tables exist and are accessible:
-
-    - SH.PRODUCTS
-
-    - SH.SALES
-
-    - SH.TIMES
-
-    - OE.ORDERS
+  - `OE.PRODUCT_INFORMATION`
+  - `OE.PRODUCT_DESCRIPTIONS` (optional but recommended for translated names)
+  - `OE.ORDERS`
+  - `OE.ORDER_ITEMS`
 
 ### 2 Verify Oracle Network Access
 
@@ -293,28 +305,52 @@ Oracle should be accessible via IP & port, e.g.:
 ```bash
 DSN = 192.168.1.182:1521/testdb
 ```
-The user you connect with (e.g. superset) must have SELECT and INSERT permissions on these schemas.
 
+The user you connect with (e.g. `superset`) must have:
 
-### 3️ Configure Environment (.env.docker) (Environment Variables)
+- `SELECT` on the tables listed above
+- `INSERT` on `OE.ORDERS` and `OE.ORDER_ITEMS`
 
-Update the following file with your Oracle credentials: (Your Virtual Machine ip / oracledb name, the oracle user you registered in the superset)
+### 3 Configure Environment (`.env.docker`)
+
+Create `.env.docker` in the project root and set your own values:
 
 ```bash
 # .env.docker
-ORACLE_DSN=192.168.1.182:1521/testdb
-ORACLE_USER=superset
-ORACLE_PASSWORD=superset123
+ORACLE_DSN=YOUR_IP:1521/YOURDB
+ORACLE_USER=YOUR_USER
+ORACLE_PASSWORD=YOUR_PASSWORD
+
+# Default language for OE.PRODUCT_DESCRIPTIONS (e.g. TR, US)
+PRODUCT_LANG=TR
 ```
-Tip: You can test connection with a basic Oracle client like SQL Developer or sqlplus.
+Tip: You can test the connection with a basic Oracle client like SQL Developer or `sqlplus`.
 
-### 4️ Start Oracle (If Needed)
+### 4 Start Oracle (If Needed)
 
-If you're using a local Oracle VM or container, ensure it’s running before launching the app.
+If you’re using a local Oracle VM or container, ensure it’s running before launching the app.
 
-### 5️ Run the App (Docker Compose)
+---
 
-Once Oracle is reachable and .env.docker is updated:
+## Running with Docker Compose (Docker Desktop)
+
+### 1 Clone the repository
+
+```bash
+git clone https://github.com/yourusername/sales-pulse.git
+cd sales-pulse
+```
+
+### 2 Create and configure `.env.docker`
+
+```bash
+ORACLE_DSN=YOUR_IP:1521/YOURDB
+ORACLE_USER=YOUR_USER
+ORACLE_PASSWORD=YOUR_PASSWORD
+PRODUCT_LANG=TR
+```
+
+### 3 Build & run with Docker Compose
 
 ```bash
 docker-compose up --build
@@ -322,111 +358,72 @@ docker-compose up --build
 
 This will:
 
-- Start the FastAPI backend (port 8001)
+- Start the FastAPI backend (port **8000** inside the container, or mapped port such as **8001**)
+- Start the React frontend (port **5173**)
+- Connect both to Oracle and serve the app
 
-- Start the React frontend (port 5173)
+Typical local ports:
 
-- Connect to Oracle and serve the app
+- Backend → `http://localhost:8000` (or `http://localhost:8001` depending on your compose mapping)
+- Frontend → `http://localhost:5173` (or mapped port)
 
-
----
-
-## Running Locally with Docker Compose (Docker Desktop)
-
-### 1️ Clone the repository
+After the first build:
 
 ```bash
-git clone https://github.com/yourusername/sales-pulse.git
-cd sales-pulse
-```
-
-### 2️ Create and configure .env.docker
-
-```bash
-ORACLE_DSN=YOUR_IP:1521/YOURDB
-ORACLE_USER=YOUR_USER
-ORACLE_PASSWORD=YOUR_PASSWORD
-```
-
-### 3️ Build & run with Docker Compose
-
-```bash
-docker-compose up --build
-```
-
-- Backend → http://localhost:8001
-
-- Frontend → http://localhost:5173 (or mapped port)
-
-
-After the build:  
-
-If you changed code and need a rebuild for specific services:
-```powershell
+# Rebuild only if you changed code
 docker compose build client
 docker compose build server
 docker compose up -d
 ```
-> docker compose build client: changes on the client side.  
-> docker compose build server: changes on the server side.  
-> Tip: docker compose up --build -d also works to rebuild what’s needed automatically.  
 
+> `docker compose build client`: rebuilds the React frontend  
+> `docker compose build server`: rebuilds the FastAPI backend  
+> Tip: `docker compose up --build -d` will also rebuild what’s needed automatically.
 
 ### 4️ Stop containers
-
 ```bash
 docker-compose down
 ```
 
-## Manual Local Development
-
-If not using Docker:
-
-### Backend:
-
-```bash
-cd backend
-python -m venv venv
-source venv/Scripts/activate  # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8001
-```
-
-### Frontend:
-
-```bash
-cd client
-npm install
-npm run dev
-```
-
---- 
+---
 
 ## How It Works
 
-1. Frontend (React):
+1. **Frontend (React)**
+   - Calls backend APIs using `VITE_API_URL` (configured in `.env` / environment).
+   - Provides two main tabs:
+     - Yeni Sipariş – create a new order
+     - Siparişler – view the latest 50 orders
+   - Shows:
+     - Product dropdown with translated names (if available) and prices
+     - Quantity input
+     - Live order summary (product name, unit price, total)
+     - Auto-refreshing orders table with “Detay” / “Gizle” to see line items
 
-- Calls backend APIs from VITE_API_URL (configured in .env)
+2. **Backend (FastAPI)**
+   - Connects to Oracle using a connection pool (`oracledb.create_pool`).
+   - Exposes endpoints:
+     - `GET /ping` → health check
+     - `GET /products?lang=...` → products from `OE.PRODUCT_INFORMATION`
+       joined with `OE.PRODUCT_DESCRIPTIONS` (optional translation)
+     - `GET /orders?lang=...` → last 50 rows from `OE.ORDERS`
+       plus `items_count` & `items_preview` for each order
+     - `GET /order-items?order_id=...&lang=...` → details from `OE.ORDER_ITEMS`
+       joined with product names
+     - `POST /add-order` → inserts into:
+       - `OE.ORDERS` (order header)
+       - `OE.ORDER_ITEMS` (single line item with price * quantity)
+   - Uses `PRODUCT_LANG` env var as default language; `lang` query parameter overrides per request.
 
-- Displays sales list, product dropdown, and order form
-
-2. Backend (FastAPI):
-
-- Connects to Oracle using connection pool
-
-- Inserts into:
-
-  - OE.ORDERS (order header)
-
-  - SH.SALES (sales record)
-
-- Fetches product list and latest 50 sales
-
-3. Database (Oracle):
-
-- Uses existing sample schemas OE and SH
-
-- SH.TIMES ensures partition-safe inserts
+3. **Database (Oracle)**
+   - Uses the OE sample schema as the main source of truth:
+     - `OE.PRODUCT_INFORMATION` – base product data and list prices
+     - `OE.PRODUCT_DESCRIPTIONS` – translated product names (per `LANGUAGE_ID`)
+     - `OE.ORDERS` – order headers
+     - `OE.ORDER_ITEMS` – order line items
+   - No direct dependency on `SH.SALES` / `SH.TIMES` in the core app.
+   - Optionally, you can build additional ETL/PL/SQL jobs to push OE orders into `SH.SALES`
+     for data warehouse/reporting scenarios.
 
 ---
 
